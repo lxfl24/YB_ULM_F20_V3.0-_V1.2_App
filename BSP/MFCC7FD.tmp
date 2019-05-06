@@ -1,0 +1,112 @@
+#include "dev_timer.h"
+#include "em_timer.h"
+#include "em_cmu.h"
+#include "dev_uart.h"
+#include "em_gpio.h"
+
+#define  INTERVAL_PER_SEC0   500		       //定时器0每2ms中断一次		               
+#define  TIMER0_TOP_VAL  	 ((CMU_ClockFreqGet(cmuClock_HFPER)/1024)/INTERVAL_PER_SEC0)	 //定时器初始值,2ms一次中断	，CPU频率改变也不影响
+
+#define  INTERVAL_PER_SEC1   500000000	                 //定时器0每2ms中断一次		               
+#define  TIMER1_TOP_VAL  	 ((CMU_ClockFreqGet(cmuClock_HFPER)/1024)/INTERVAL_PER_SEC1)	 //定时器初始值,2ms一次中断	，CPU频率改变也不影响
+
+u8 Total_Pulse=8;
+void Init_Timer0()
+{
+  /* Select TIMER0 parameters */  
+	TIMER_Init_TypeDef timerInit =
+	{
+		.enable     = false, 
+		.debugRun   = true, 
+		.prescale   = timerPrescale1024, 
+		.clkSel     = timerClkSelHFPerClk, 
+		.fallAction = timerInputActionNone, 
+		.riseAction = timerInputActionNone, 
+		.mode       = timerModeDown, 		   //下溢模式
+		.dmaClrAct  = false,
+		.quadModeX4 = false, 
+		.oneShot    = false, 
+		.sync       = false, 
+	};
+	
+	/* Enable overflow interrupt */
+	TIMER_IntEnable(TIMER0, TIMER_IF_UF);	  //使能向下溢出中断
+	
+	/* Enable TIMER0 interrupt vector in NVIC */
+	NVIC_EnableIRQ(TIMER0_IRQn);
+	
+	/* Set TIMER Top value */
+	TIMER_TopSet(TIMER0, TIMER0_TOP_VAL);
+	
+	/* Configure TIMER */
+	TIMER_Init(TIMER0, &timerInit);
+        
+    TIMER_Enable(TIMER0,true);	  //开定时器0
+}
+
+
+/***************************************************************************//**
+ * @brief   TIMER0中断处理函数
+							
+ * @param[in] 
+ * @return   
+ ******************************************************************************/
+void TIMER0_IRQHandler(void)
+{ 
+	/* Clear flag for TIMER0 overflow interrupt */
+	TIMER_IntClear(TIMER0, TIMER_IF_UF);
+     //   uartTxByte(0x34);
+}
+
+
+void Init_Timer1()
+{
+  /* Select TIMER0 parameters */  
+	TIMER_Init_TypeDef timer1Init =
+	{
+		.enable     = false, 
+		.debugRun   = true, 
+		.prescale   = timerPrescale1024, 
+		.clkSel     = timerClkSelHFPerClk, 
+		.fallAction = timerInputActionNone, 
+		.riseAction = timerInputActionNone, 
+		.mode       = timerModeDown, 		   //下溢模式
+		.dmaClrAct  = false,
+		.quadModeX4 = false, 
+		.oneShot    = false, 
+		.sync       = false, 
+	};
+	
+	/* Enable overflow interrupt */
+	TIMER_IntEnable(TIMER1, TIMER_IF_UF);	  //使能向下溢出中断
+	
+	/* Enable TIMER0 interrupt vector in NVIC */
+	NVIC_EnableIRQ(TIMER1_IRQn);
+	
+	/* Set TIMER Top value */
+	TIMER_TopSet(TIMER1, TIMER1_TOP_VAL);
+	
+	/* Configure TIMER */
+	TIMER_Init(TIMER1, &timer1Init);
+        
+}
+
+/***************************************************************************//**
+ * @brief   TIMER0中断处理函数
+							
+ * @param[in] 
+ * @return   
+ ******************************************************************************/
+void TIMER1_IRQHandler(void)
+{ 
+    static u8  cnt_Pulse=0;
+	/* Clear flag for TIMER0 overflow interrupt */
+	TIMER_IntClear(TIMER1, TIMER_IF_UF);
+    GPIO_PinOutToggle(gpioPortA,9);
+	if((++cnt_Pulse)%(Total_Pulse*2)==0)
+	{
+		cnt_Pulse=0;
+		TIMER_Enable(TIMER1,false);	  //关闭定时器1
+	}
+}
+
